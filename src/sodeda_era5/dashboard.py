@@ -5,6 +5,7 @@ from .flow import Era5Flow
 import holoviews as hv 
 import pandas as pd 
 # from holoviews.operation.datashader import regrid
+import tempfile
 
 hv.extension('bokeh')
 
@@ -54,7 +55,11 @@ def plot_map(time_start, time_end, latitude_start, latitude_end, longitude_start
     
     bokeh_plot = hv.render(plot)
 
-    return  bokeh_plot
+    with tempfile.NamedTemporaryFile(delete=False, mode='w', suffix=".zip") as temp_file:
+        data.to_zarr(temp_file.name,mode="w")
+        temp_file_path = temp_file.name
+    
+    return bokeh_plot, temp_file_path
 
 # TODO: maybe build input boxes from scope?
 scope = flow.scope()
@@ -74,6 +79,8 @@ with gr.Blocks() as demo:
         variable = gr.CheckboxGroup(choices=["2m_temperature", "surface_pressure"], value=["2m_temperature"], label="Select Variable:")
         btn = gr.Button(value="Update Map")
         map = gr.Plot()
-    demo.load(plot_map, [time_start, time_end, latitude_start, latitude_end, longitude_start, longitude_end, variable], map)
-    btn.click(plot_map, [time_start, time_end, latitude_start, latitude_end, longitude_start, longitude_end, variable], map)
+        output_file = gr.File(label="Download data as zarr zip file")
+
+    demo.load(plot_map, [time_start, time_end, latitude_start, latitude_end, longitude_start, longitude_end, variable], [map,output_file])
+    btn.click(plot_map, [time_start, time_end, latitude_start, latitude_end, longitude_start, longitude_end, variable], [map,output_file])
 
